@@ -1,90 +1,85 @@
+#include <stdarg.h>
 #include "main.h"
 #include <stddef.h>
-#include <stdarg.h>
-#include <stdio.h>
 
 /**
- * cleanup - Peforms cleanup operations for _printf.
- * @args: A va_list of arguments provided to _printf.
- * @output: A buffer_t struct.
+ * get_f - select function for conversion char
+ * @c: char to check
+ * Return: pointer to function
  */
-void cleanup(va_list args, buffer_t *output)
+int (*get_f(const char c))(va_list)
 {
-	va_end(args);
-	write(1, output->start, output->len);
-	free_buffer(output);
-}
+	int i = 0;
 
-/**
- * run_printf - Reads through the format string for _printf.
- * @format: Character string to print - may contain directives.
- * @output: A buffer_t struct containing a buffer.
- * @args: A va_list of arguments.
- *
- * Return: The number of characters stored to output.
- */
-int run_printf(const char *format, va_list args, buffer_t *output)
-{
-	int i, wid, prec, ret = 0;
-	char tmp;
-	unsigned char flags, len;
-	unsigned int (*f)(va_list, buffer_t *,
-			unsigned char, int, int, unsigned char);
-
-	for (i = 0; *(format + i); i++)
+	flags_p fp[] = {
+		{"c", print_char},
+		{"s", print_str},
+		{"i", print_decimal},
+		{"d", print_decimal},
+		{"b", print_binary},
+		{"o", print_octal},
+		{"x", print_hexa_lower},
+		{"X", print_hexa_upper},
+		{"u", print_unsigned},
+		{"S", print_str_unprintable},
+		{"r", print_str_reverse},
+		{"p", print_ptr},
+		{"R", print_rot13},
+		{"%", print_percent}
+	};
+	while (i < 14)
 	{
-		len = 0;
-		if (*(format + i) == '%')
+		if (c == fp[i].c[0])
 		{
-			tmp = 0;
-			flags = handle_flags(format + i + 1, &tmp);
-			wid = handle_width(args, format + i + tmp + 1, &tmp);
-			prec = handle_precision(args, format + i + tmp + 1,
-					&tmp);
-			len = handle_length(format + i + tmp + 1, &tmp);
-
-			f = handle_specifiers(format + i + tmp + 1);
-			if (f != NULL)
-			{
-				i += tmp + 1;
-				ret += f(args, output, flags, wid, prec, len);
-				continue;
-			}
-			else if (*(format + i + tmp + 1) == '\0')
-			{
-				ret = -1;
-				break;
-			}
+			return (fp[i].f);
 		}
-		ret += _memcpy(output, (format + i), 1);
-		i += (len != 0) ? 1 : 0;
+		i++;
 	}
-	cleanup(args, output);
-	return (ret);
+	return (NULL);
 }
 
 /**
- *_printf - Outputs a formatted string.
- *@format: Character string to print - may contain directives.
- *
- *Return: The number of characters printed.
+ * _printf - Reproduce behavior of printf function
+ * @format: format string
+ * Return: value of printed chars
  */
+
 int _printf(const char *format, ...)
 {
-	buffer_t *output;
-	va_list args;
-	int ret;
+	va_list arg;
+	int sum = 0, i = 0;
+	int (*f)();
 
-	if (format == NULL)
+	if (!format || (format[0] == '%' && format[1] == '\0'))
 		return (-1);
-	output = init_buffer();
-	if (output == NULL)
-		return (-1);
+	va_start(arg, format);
 
-	va_start(args, format);
-
-	ret = run_printf(format, args, output);
-
-	return (ret);
+	while (format[i])
+	{
+		if (format[i] == '%')
+		{
+			if (format[i + 1] != '\0')
+				f = get_f(format[i + 1]);
+			if (f == NULL)
+			{
+				_putchar(format[i]);
+				sum++;
+				i++;
+			}
+			else
+			{
+				sum += f(arg);
+				i += 2;
+				continue;
+			}
+		}
+		else
+		{
+			_putchar(format[i]);
+			sum++;
+			i++;
+		}
+	}
+	va_end(arg);
+	return (sum);
 }
-
