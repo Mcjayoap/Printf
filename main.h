@@ -18,7 +18,7 @@ typedef struct flags_printf
 {
 	char *c;
 	int (*f)(va_list);
-} flags_p
+} flags_p;
 
 int _printf(const char *format, ...);
 int print_char(va_list ap);
